@@ -7,6 +7,7 @@ Interactive docs: http://localhost:8000/docs
 import math
 from collections import Counter
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Annotated
 
 import httpx
@@ -16,16 +17,26 @@ from fastapi.responses import JSONResponse
 from pydantic import AfterValidator, BaseModel, Field, JsonValue
 
 from api_time_machine import __version__
-from api_time_machine.config import allowed_hosts_from_env
+from api_time_machine.config import allowed_hosts_from_env, load_env_file
 from api_time_machine.diff import compare
 from api_time_machine.fetch import BlockedURLError, FetchError
 from api_time_machine.models import Change, ChangeKind, Severity
 from api_time_machine.replay import replay
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    # Runs once when the server starts. Loading .env here (not at import time)
+    # means tests that import this module aren't affected by a local .env file.
+    load_env_file()
+    yield
+
+
 app = FastAPI(
     title="API Time Machine",
     description="Detect breaking changes between two API responses.",
     version=__version__,
+    lifespan=lifespan,
 )
 
 

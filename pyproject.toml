@@ -17,6 +17,10 @@ dependencies = [
     "fastapi>=0.115",  # web framework for the API and the mock API
     "uvicorn>=0.30",   # server that runs FastAPI apps
     "httpx>=0.27",     # HTTP client for replaying requests
+    "sqlalchemy>=2.0",  # database toolkit and ORM for comparison history
+    "psycopg[binary]>=3.2",  # PostgreSQL driver ([binary] bundles what Windows needs)
+    "alembic>=1.13",   # database migrations
+    "python-dotenv>=1.0",  # loads settings from a local .env file
 ]
 
 # Development-only dependencies: needed to work on the project, not to run it.
