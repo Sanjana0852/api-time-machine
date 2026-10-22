@@ -59,6 +59,34 @@ def test_bool_to_integer_is_a_type_change() -> None:
     ]
 
 
+# --- Null and number rules (R4-R7) ------------------------------------------------
+
+
+def test_value_becoming_null_is_breaking() -> None:
+    assert compare({"name": "Asha"}, {"name": None}) == [
+        Change("$.name", ChangeKind.TYPE_CHANGED, Severity.BREAKING, "Asha", None),
+    ]
+
+
+def test_null_getting_a_value_is_safe() -> None:
+    # Usually data ("this product has a discount now"), not an API change.
+    assert compare({"discount": None}, {"discount": 10}) == [
+        Change("$.discount", ChangeKind.TYPE_CHANGED, Severity.SAFE, None, 10),
+    ]
+
+
+def test_integer_becoming_float_is_breaking() -> None:
+    assert compare({"price": 250}, {"price": 250.5}) == [
+        Change("$.price", ChangeKind.TYPE_CHANGED, Severity.BREAKING, 250, 250.5),
+    ]
+
+
+def test_float_becoming_integer_is_safe() -> None:
+    assert compare({"rating": 4.5}, {"rating": 4}) == [
+        Change("$.rating", ChangeKind.TYPE_CHANGED, Severity.SAFE, 4.5, 4),
+    ]
+
+
 # --- Absent vs. null (design doc, decision 3) ----------------------------------
 
 

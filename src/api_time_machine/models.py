@@ -1,4 +1,8 @@
-"""Data types shared by the comparison engine. Data only, no logic."""
+"""The comparison engine's vocabulary: data types, plus json_type() to tell JSON types apart.
+
+Every other module depends on this one, and it depends on none of them, so it
+can never be part of a circular import.
+"""
 
 from dataclasses import dataclass
 from enum import StrEnum
@@ -19,6 +23,31 @@ class JsonType(StrEnum):
     FLOAT = "float"
     BOOLEAN = "boolean"
     NULL = "null"
+
+
+def json_type(value: JsonValue) -> JsonType:
+    """Return the JSON type of a value produced by the `json` module.
+
+    Raises TypeError for Python values that JSON cannot represent (tuples,
+    sets, bytes, ...), so bad input fails loudly instead of being misclassified.
+    """
+    if value is None:
+        return JsonType.NULL
+    # bool must be checked before int: in Python, bool is a subclass of int,
+    # so isinstance(True, int) is True.
+    if isinstance(value, bool):
+        return JsonType.BOOLEAN
+    if isinstance(value, int):
+        return JsonType.INTEGER
+    if isinstance(value, float):
+        return JsonType.FLOAT
+    if isinstance(value, str):
+        return JsonType.STRING
+    if isinstance(value, list):
+        return JsonType.ARRAY
+    if isinstance(value, dict):
+        return JsonType.OBJECT
+    raise TypeError(f"Not a JSON value: {type(value).__name__}")
 
 
 class ChangeKind(StrEnum):

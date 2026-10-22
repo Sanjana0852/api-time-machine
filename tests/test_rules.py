@@ -16,6 +16,22 @@ from api_time_machine.rules import classify
         # R3: code written for the old type fails on the new one.
         (ChangeKind.TYPE_CHANGED, 250, "250", Severity.BREAKING),
         (ChangeKind.TYPE_CHANGED, {"a": 1}, [1], Severity.BREAKING),
+        (ChangeKind.TYPE_CHANGED, True, 1, Severity.BREAKING),
+        (ChangeKind.TYPE_CHANGED, 1, True, Severity.BREAKING),
+        # R4: clients that don't null-check crash on the new null.
+        (ChangeKind.TYPE_CHANGED, 250, None, Severity.BREAKING),
+        (ChangeKind.TYPE_CHANGED, "Asha", None, Severity.BREAKING),
+        (ChangeKind.TYPE_CHANGED, {"id": 7}, None, Severity.BREAKING),
+        # R5: clients already had to handle the old null.
+        (ChangeKind.TYPE_CHANGED, None, 10, Severity.SAFE),
+        (ChangeKind.TYPE_CHANGED, None, "Asha", Severity.SAFE),
+        (ChangeKind.TYPE_CHANGED, None, {"id": 7}, Severity.SAFE),
+        # R6: an int field in a typed client can't hold 250.5.
+        (ChangeKind.TYPE_CHANGED, 250, 250.5, Severity.BREAKING),
+        (ChangeKind.TYPE_CHANGED, 250, 250.0, Severity.BREAKING),
+        # R7: every integer is a valid float.
+        (ChangeKind.TYPE_CHANGED, 4.5, 4, Severity.SAFE),
+        (ChangeKind.TYPE_CHANGED, 250.0, 250, Severity.SAFE),
         # R8: same type, different value is a data change, not a structural one.
         (ChangeKind.VALUE_CHANGED, 12, 9, Severity.INFO),
         # R9: list length is data.

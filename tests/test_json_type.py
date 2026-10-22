@@ -4,8 +4,7 @@ import json
 
 import pytest
 
-from api_time_machine.diff import json_type
-from api_time_machine.models import JsonType, JsonValue
+from api_time_machine.models import JsonType, JsonValue, json_type
 
 
 @pytest.mark.parametrize(

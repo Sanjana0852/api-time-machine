@@ -200,13 +200,15 @@ INFO      $.stock       value changed: 12 → 9
 
 ```
 src/api_time_machine/
-├── models.py     JsonValue, JsonType, ChangeKind, Severity, Change: data only, no logic
-├── diff.py       json_type(), key_path(), compare(): detects what changed
+├── models.py     JsonValue, JsonType, json_type(), ChangeKind, Severity, Change: the vocabulary
+├── diff.py       key_path(), compare(): detects what changed
 ├── rules.py      classify(): decides how severe each change is
 ├── report.py     format_report(): turns changes into text
 ├── cli.py        argument parsing, reading files, exit codes
 └── __main__.py   lets you run `python -m api_time_machine`
 ```
+
+**Dependencies point one way only:** `cli → report → diff → rules → models`. A module may import from modules to its right, never to its left. `json_type()` lives in `models.py` because both `diff.py` and `rules.py` need it. When it lived in `diff.py`, `rules.py` importing it created a circular import.
 
 **Why split detection (`diff.py`) from classification (`rules.py`)?** Detection is objective: a key either exists or it doesn't. Severity is a policy that people can disagree on. Keeping the policy in one small module means it can be read, tested and later made configurable without touching the tree-walking code.
 

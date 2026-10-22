@@ -6,22 +6,18 @@ Detection (diff.py) decides WHAT changed; this module decides HOW BAD it is.
 
 from typing import assert_never
 
-from api_time_machine.models import ChangeKind, JsonValue, Severity
+from api_time_machine.models import ChangeKind, JsonType, JsonValue, Severity, json_type
 
 
 def classify(kind: ChangeKind, old_value: JsonValue, new_value: JsonValue) -> Severity:
-    """Return the severity of one change.
-
-    old_value and new_value are not used yet; the null and number rules
-    (R4-R7) will need them.
-    """
+    """Return the severity of one change."""
     match kind:
         case ChangeKind.FIELD_REMOVED:
             return Severity.BREAKING  # R1
         case ChangeKind.FIELD_ADDED:
             return Severity.SAFE  # R2
         case ChangeKind.TYPE_CHANGED:
-            return Severity.BREAKING  # R3
+            return _classify_type_change(json_type(old_value), json_type(new_value))
         case ChangeKind.VALUE_CHANGED:
             return Severity.INFO  # R8
         case ChangeKind.ITEM_ADDED | ChangeKind.ITEM_REMOVED:
@@ -31,3 +27,16 @@ def classify(kind: ChangeKind, old_value: JsonValue, new_value: JsonValue) -> Se
             # is added without a rule, type checkers flag this line, and at
             # runtime it raises instead of silently returning None.
             assert_never(kind)
+
+
+def _classify_type_change(old_type: JsonType, new_type: JsonType) -> Severity:
+    # Special cases first; R3 is the fallback for every other type change.
+    if new_type is JsonType.NULL:
+        return Severity.BREAKING  # R4
+    if old_type is JsonType.NULL:
+        return Severity.SAFE  # R5
+    if old_type is JsonType.INTEGER and new_type is JsonType.FLOAT:
+        return Severity.BREAKING  # R6
+    if old_type is JsonType.FLOAT and new_type is JsonType.INTEGER:
+        return Severity.SAFE  # R7
+    return Severity.BREAKING  # R3
