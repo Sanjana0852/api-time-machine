@@ -9,6 +9,7 @@ import json
 from typing import assert_never
 
 from api_time_machine.models import Change, ChangeKind, JsonValue, Severity, json_type
+from api_time_machine.replay import ReplayResult
 
 # Values longer than this (e.g. whole objects) are cut short with "...".
 _MAX_VALUE_WIDTH = 40
@@ -51,6 +52,20 @@ def format_report(changes: list[Change]) -> str:
         for change in changes
     ]
     return "\n".join(lines) + "\n\n" + _summary(changes)
+
+
+def format_replay_report(result: ReplayResult) -> str:
+    """Return a replay report: both requests, any status change, then the body changes."""
+    lines = [
+        f"Old: HTTP {result.old.status_code}  {result.old.url}",
+        f"New: HTTP {result.new.status_code}  {result.new.url}",
+    ]
+    if result.status_severity is not None:
+        lines.append(
+            f"{result.status_severity.upper():<{_SEVERITY_WIDTH}}  status code changed: "
+            f"{result.old.status_code} -> {result.new.status_code}"
+        )
+    return "\n".join(lines) + "\n\n" + format_report(result.changes)
 
 
 def _summary(changes: list[Change]) -> str:

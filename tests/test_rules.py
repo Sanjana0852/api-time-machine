@@ -3,7 +3,7 @@
 import pytest
 
 from api_time_machine.models import ChangeKind, JsonValue, Severity
-from api_time_machine.rules import classify
+from api_time_machine.rules import classify, classify_status_change
 
 
 @pytest.mark.parametrize(
@@ -43,3 +43,23 @@ def test_classify(
     kind: ChangeKind, old_value: JsonValue, new_value: JsonValue, expected: Severity
 ) -> None:
     assert classify(kind, old_value, new_value) is expected
+
+
+@pytest.mark.parametrize(
+    ("old_status", "new_status", "expected"),
+    [
+        # R10: same status code is not a change.
+        (200, 200, None),
+        (404, 404, None),
+        # R11: the endpoint used to succeed and now doesn't.
+        (200, 404, Severity.BREAKING),
+        (201, 500, Severity.BREAKING),
+        (200, 302, Severity.BREAKING),
+        # R12: any other difference.
+        (200, 201, Severity.INFO),
+        (500, 200, Severity.INFO),
+        (404, 500, Severity.INFO),
+    ],
+)
+def test_classify_status_change(old_status: int, new_status: int, expected: Severity | None) -> None:
+    assert classify_status_change(old_status, new_status) is expected
