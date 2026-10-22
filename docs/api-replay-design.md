@@ -1,6 +1,6 @@
 # API Replay: Design
 
-**Status:** proposed (Phase 2)
+**Status:** implemented (Phase 2)
 
 Phase 1 compares two JSON **files**. Phase 2 lets the tool fetch the two responses itself: send the same request to an old and a new version of an API, then compare what comes back. It also exposes the engine as a **web API**, which the dashboard (Phase 4) will use.
 
