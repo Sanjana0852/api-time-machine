@@ -199,6 +199,15 @@ It's development tooling: it lives in the package so it's one command to run, bu
 | URL breaks a safety rule (e.g. host not allowed) | `400 Bad Request` | The caller asked for something not permitted |
 | The target server failed, timed out, or didn't return JSON | `502 Bad Gateway` | We're acting as a gateway, and the server behind us misbehaved; it's not the caller's fault |
 
+Every error body has the form `{"detail": ...}`. For `422`, `detail` lists each problem's location and message, e.g. `{"loc": ["body", "new"], "msg": "Field required"}`.
+
+**Validation errors don't echo the input.** FastAPI's default `422` response repeats the invalid input back. A custom handler removes it, for two reasons:
+
+- Input containing `NaN` can't be written as JSON, so the default error response itself crashed with a `500`. A test found this.
+- `/compare` requests can carry two whole documents, which shouldn't be repeated in every error response (or in logs).
+
+**Same JSON rules everywhere:** `/compare` uses Pydantic's `JsonValue`, which keeps types exactly as sent (`true` stays a boolean, `250.0` stays a float). An extra validator rejects `NaN` and `Infinity`, which FastAPI accepts by default. Files (`cli.py`) and fetched responses (`fetch.py`) reject them through `jsonparse.py`.
+
 ---
 
 ## 8. CLI
