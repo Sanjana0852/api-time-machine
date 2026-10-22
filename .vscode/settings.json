@@ -1,0 +1,6 @@
+{
+  // Use the project's virtual environment, not the global Python.
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+  // Activate the venv automatically in new VS Code terminals.
+  "python.terminal.activateEnvironment": true
+}
