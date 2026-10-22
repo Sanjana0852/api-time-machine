@@ -114,6 +114,87 @@ def test_top_level_scalars() -> None:
     ]
 
 
+# --- Nested objects --------------------------------------------------------------
+
+
+def test_change_deep_inside_nested_objects() -> None:
+    assert compare({"a": {"b": {"c": 1}}}, {"a": {"b": {"c": "1"}}}) == [
+        Change("$.a.b.c", ChangeKind.TYPE_CHANGED, Severity.BREAKING, 1, "1"),
+    ]
+
+
+def test_field_removed_and_added_inside_nested_object() -> None:
+    old = {"seller": {"id": 7, "name": "Asha"}}
+    new = {"seller": {"name": "Asha", "rating": 4}}
+
+    assert compare(old, new) == [
+        Change("$.seller.id", ChangeKind.FIELD_REMOVED, Severity.BREAKING, 7, None),
+        Change("$.seller.rating", ChangeKind.FIELD_ADDED, Severity.SAFE, None, 4),
+    ]
+
+
+def test_removed_nested_object_is_one_change_not_one_per_field() -> None:
+    seller = {"id": 7, "name": "Asha"}
+
+    assert compare({"id": 1, "seller": seller}, {"id": 1}) == [
+        Change("$.seller", ChangeKind.FIELD_REMOVED, Severity.BREAKING, seller, None),
+    ]
+
+
+def test_nested_object_becoming_null_is_a_type_change() -> None:
+    # Type check comes first, so the engine doesn't look inside the old object.
+    seller = {"id": 7}
+
+    assert compare({"seller": seller}, {"seller": None}) == [
+        Change("$.seller", ChangeKind.TYPE_CHANGED, Severity.BREAKING, seller, None),
+    ]
+
+
+def test_changes_are_reported_depth_first() -> None:
+    # Everything inside "a" is reported before moving on to "b".
+    old = {"a": {"x": 1, "y": 1}, "b": 1}
+    new = {"a": {"x": 2, "y": 2}, "b": 2}
+
+    assert [c.path for c in compare(old, new)] == ["$.a.x", "$.a.y", "$.b"]
+
+
+def test_deeply_nested_document() -> None:
+    # Real APIs rarely nest beyond ~10 levels; 100 leaves a wide margin.
+    depth = 100
+    old: dict = {"leaf": 1}
+    new: dict = {"leaf": 2}
+    for _ in range(depth):
+        old, new = {"n": old}, {"n": new}
+
+    changes = compare(old, new)
+
+    assert len(changes) == 1
+    assert changes[0].path == "$" + ".n" * depth + ".leaf"
+
+
+# --- Paths for keys that aren't simple names -------------------------------------
+
+
+def test_key_containing_a_dot_uses_bracket_notation() -> None:
+    assert compare({"a.b": 1}, {"a.b": 2}) == [
+        Change('$["a.b"]', ChangeKind.VALUE_CHANGED, Severity.INFO, 1, 2),
+    ]
+
+
+def test_dotted_key_and_nested_key_get_different_paths() -> None:
+    # Without bracket notation, both of these would be reported as "$.a.b".
+    flat = compare({"a.b": 1}, {"a.b": 2})
+    nested = compare({"a": {"b": 1}}, {"a": {"b": 2}})
+
+    assert flat[0].path != nested[0].path
+
+
+def test_hyphenated_key_inside_nested_object() -> None:
+    assert compare({"user": {"user-id": 1}}, {"user": {}}) == [
+        Change('$.user["user-id"]', ChangeKind.FIELD_REMOVED, Severity.BREAKING, 1, None),
+    ]
+
+
 # --- Purity --------------------------------------------------------------------
 
 

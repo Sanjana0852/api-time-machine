@@ -201,7 +201,7 @@ INFO      $.stock       value changed: 12 → 9
 ```
 src/api_time_machine/
 ├── models.py     JsonValue, JsonType, ChangeKind, Severity, Change: data only, no logic
-├── diff.py       json_type(), compare(): detects what changed
+├── diff.py       json_type(), key_path(), compare(): detects what changed
 ├── rules.py      classify(): decides how severe each change is
 ├── report.py     format_report(): turns changes into text
 ├── cli.py        argument parsing, reading files, exit codes

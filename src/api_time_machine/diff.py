@@ -3,8 +3,15 @@
 The algorithm is described in section 6 of docs/comparison-engine-design.md.
 """
 
+import json
+import re
+
 from api_time_machine.models import Change, ChangeKind, JsonType, JsonValue
 from api_time_machine.rules import classify
+
+# Keys matching this can use dot notation ($.price). ASCII only, on purpose:
+# anything else gets the unambiguous bracket notation ($["user-id"]).
+_SIMPLE_KEY = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
 
 def compare(old: JsonValue, new: JsonValue) -> list[Change]:
@@ -43,6 +50,17 @@ def json_type(value: JsonValue) -> JsonType:
     raise TypeError(f"Not a JSON value: {type(value).__name__}")
 
 
+def key_path(parent: str, key: str) -> str:
+    """Return the path to `key` inside the object at path `parent`.
+
+    Simple keys use dot notation ($.price); any other key is JSON-quoted in
+    brackets ($["a.b"]), so a dotted key can't be confused with nesting.
+    """
+    if _SIMPLE_KEY.fullmatch(key):
+        return f"{parent}.{key}"
+    return f"{parent}[{json.dumps(key, ensure_ascii=False)}]"
+
+
 def _compare_at(path: str, old: JsonValue, new: JsonValue, changes: list[Change]) -> None:
     """Compare the values found at `path` in both documents, appending to `changes`."""
     # Check types first: comparing values of different types is meaningless,
@@ -60,7 +78,7 @@ def _compare_objects(
 ) -> None:
     # Keys in old: either removed, or present in both and compared.
     for key, old_value in old.items():
-        child_path = f"{path}.{key}"
+        child_path = key_path(path, key)
         if key not in new:
             changes.append(_make_change(child_path, ChangeKind.FIELD_REMOVED, old_value, None))
         else:
@@ -69,7 +87,7 @@ def _compare_objects(
     # Keys only in new: added. Checked second so results follow old's key order.
     for key, new_value in new.items():
         if key not in old:
-            changes.append(_make_change(f"{path}.{key}", ChangeKind.FIELD_ADDED, None, new_value))
+            changes.append(_make_change(key_path(path, key), ChangeKind.FIELD_ADDED, None, new_value))
 
 
 def _make_change(
