@@ -1,0 +1,42 @@
+# Files Git should never track.
+# Each section explains why, so it's clear what is safe to delete or regenerate.
+
+# --- Secrets ---------------------------------------------------------------
+# .env holds real API keys and passwords. It must never be committed.
+# .env.example (with fake placeholder values) IS committed, so others
+# know which settings the app needs.
+.env
+.env.*
+!.env.example
+
+# --- Python virtual environment ----------------------------------------------
+# A private copy of Python + packages for this project. It is large and
+# machine-specific; anyone can recreate it from requirements files.
+.venv/
+venv/
+
+# --- Python generated files ---------------------------------------------------
+# Compiled bytecode that Python creates automatically when running code.
+__pycache__/
+*.py[cod]
+
+# Package build output.
+*.egg-info/
+build/
+dist/
+
+# --- Test and tool caches -----------------------------------------------------
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- Editor and operating system files ----------------------------------------
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+Thumbs.db
+Desktop.ini
+.DS_Store
