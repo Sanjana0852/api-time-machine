@@ -39,9 +39,13 @@ JSON has six kinds of value. Python's `json` module turns them into Python types
 | boolean | `true` | `bool` |
 | null | `null` | `None` |
 
-The engine names each value's type with a function `json_type(value)`, which returns one of:
+The engine names each value's type with a function `json_type(value)`, which returns a `JsonType` enum member:
 
-`"object"`, `"array"`, `"string"`, `"integer"`, `"float"`, `"boolean"`, `"null"`
+`OBJECT`, `ARRAY`, `STRING`, `INTEGER`, `FLOAT`, `BOOLEAN`, `NULL`
+
+It is a `StrEnum`, so each member also equals its lowercase string (`JsonType.INTEGER == "integer"`). Using an enum rather than bare strings means a typo is an immediate error instead of a silent mismatch.
+
+Values that JSON cannot represent (tuples, sets, bytes, ...) raise `TypeError`.
 
 **Decision 1: integer and float are separate types.** JSON has a single "number" type, but many client languages (Java, Go, C#, Kotlin) store whole numbers in an `int` field. If `250` becomes `250.5`, those clients fail to parse the response. Keeping the two separate lets us catch this.
 
@@ -53,6 +57,8 @@ The engine names each value's type with a function `json_type(value)`, which ret
 
 ```python
 type JsonValue = dict[str, JsonValue] | list[JsonValue] | str | int | float | bool | None
+
+class JsonType(StrEnum): ...  # see section 2
 
 class ChangeKind(StrEnum):
     FIELD_ADDED   = "field_added"    # object key only in new
@@ -76,7 +82,7 @@ class Change:
     new_value: JsonValue   # None for FIELD_REMOVED / ITEM_REMOVED
 ```
 
-**Decision 2: `frozen=True`.** A `Change` is a fact about two documents and should never be modified after it is created. Frozen dataclasses are also hashable and safe to share.
+**Decision 2: `frozen=True`.** A `Change` is a fact about two documents and should never be modified after it is created, so it is safe to pass around without defensive copies. (It is not hashable in general: `old_value` and `new_value` can be dicts or lists.)
 
 **Decision 3: absent vs. `null`.** `{"price": null}` and `{}` are different: in one the key exists with value null, in the other it doesn't exist. The engine keeps them separate: a missing key gives `FIELD_REMOVED`, while a value that becomes null gives `TYPE_CHANGED`.
 
@@ -194,7 +200,7 @@ INFO      $.stock       value changed: 12 → 9
 
 ```
 src/api_time_machine/
-├── models.py     JsonValue, ChangeKind, Severity, Change: data only, no logic
+├── models.py     JsonValue, JsonType, ChangeKind, Severity, Change: data only, no logic
 ├── diff.py       json_type(), compare(): detects what changed
 ├── rules.py      classify(): decides how severe each change is
 ├── report.py     format_report(): turns changes into text
