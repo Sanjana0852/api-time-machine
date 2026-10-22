@@ -1,0 +1,19 @@
+{
+  "id": 101,
+  "name": "Wireless Mouse",
+  "price": 250,
+  "currency": "INR",
+  "stock": 12,
+  "rating": 4.5,
+  "discount": null,
+  "seller": {
+    "id": 7,
+    "name": "Asha Electronics",
+    "verified": true
+  },
+  "tags": ["electronics", "accessories"],
+  "variants": [
+    { "sku": "WM-BLK", "color": "black", "price": 250 },
+    { "sku": "WM-WHT", "color": "white", "price": 260 }
+  ]
+}
