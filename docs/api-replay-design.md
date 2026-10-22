@@ -66,6 +66,10 @@ The comparison engine from Phase 1 is reused unchanged. Phase 2 only adds new wa
 | **httpx** | A Python HTTP client | Sends requests and reads responses. Supports async, and ships a fake "transport" so tests never touch the real network. |
 | **Pydantic** | Data validation from type hints (comes with FastAPI) | Turns incoming JSON into checked Python objects, with clear errors for bad input. |
 
+**httpx vs. httpx2:** `httpx2` is the successor to `httpx`, by the same author. Starlette (and so FastAPI's `TestClient`) now prefers it, and the test run shows a `StarletteDeprecationWarning` when only `httpx` is installed. The warning is harmless for now: `TestClient` works correctly with `httpx`.
+
+**Open item:** add `httpx2` as a dev dependency so `TestClient` uses it and the warning goes away. Our replay code stays on `httpx`, whose API is stable and well known. Migrating replay itself to `httpx2` would be a separate, deliberate change with its own tests.
+
 ---
 
 ## 4. Safety rules for outgoing requests
