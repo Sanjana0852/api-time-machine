@@ -14,6 +14,25 @@ For example, if an API used to return `"price": 250` and now returns `"price": "
 - **Dashboard:** React + TypeScript UI for running and browsing comparisons
 - **AI explanations:** optional plain-English impact summaries, layered on top of the deterministic results
 
+## Development setup (Windows PowerShell)
+
+Requires Python 3.12+ and Git.
+
+```powershell
+# Create and activate a virtual environment
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+
+# Install the project in editable mode, plus development tools (pytest)
+python -m pip install -e ".[dev]"
+
+# Run the tests
+python -m pytest
+```
+
+If activation fails with "running scripts is disabled on this system", run
+`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once, then try again.
+
 ## Project plan
 
 See [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md) for the architecture, phases and setup steps.

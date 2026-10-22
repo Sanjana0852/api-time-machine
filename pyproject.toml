@@ -1,0 +1,29 @@
+# Project configuration: metadata, dependencies and tool settings.
+# Spec: https://packaging.python.org/en/latest/specifications/pyproject-toml/
+
+# How to build/install this project. setuptools is the standard, widely used backend.
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "api-time-machine"
+version = "0.1.0"
+description = "Compare API responses across versions and detect breaking changes."
+readme = "README.md"
+requires-python = ">=3.12"
+# Runtime dependencies: packages the app needs to run. None yet.
+dependencies = []
+
+# Development-only dependencies: needed to work on the project, not to run it.
+# Install with:  python -m pip install -e ".[dev]"
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+]
+
+[tool.pytest.ini_options]
+# Only look for tests in tests/ (faster, and never picks up stray files).
+testpaths = ["tests"]
+# -ra: print a short summary of any skipped/failed tests at the end.
+addopts = "-ra"
