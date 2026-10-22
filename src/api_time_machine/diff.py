@@ -69,6 +69,8 @@ def _compare_at(path: str, old: JsonValue, new: JsonValue, changes: list[Change]
         changes.append(_make_change(path, ChangeKind.TYPE_CHANGED, old, new))
     elif isinstance(old, dict) and isinstance(new, dict):
         _compare_objects(path, old, new, changes)
+    elif isinstance(old, list) and isinstance(new, list):
+        _compare_arrays(path, old, new, changes)
     elif old != new:
         changes.append(_make_change(path, ChangeKind.VALUE_CHANGED, old, new))
 
@@ -88,6 +90,21 @@ def _compare_objects(
     for key, new_value in new.items():
         if key not in old:
             changes.append(_make_change(key_path(path, key), ChangeKind.FIELD_ADDED, None, new_value))
+
+
+def _compare_arrays(
+    path: str, old: list[JsonValue], new: list[JsonValue], changes: list[Change]
+) -> None:
+    # Items are matched by position (a known limitation: see design doc, section 7).
+    # zip() stops at the shorter list, so this covers positions present in both.
+    for index, (old_item, new_item) in enumerate(zip(old, new)):
+        _compare_at(f"{path}[{index}]", old_item, new_item, changes)
+
+    # At most one of these loops runs: whichever list is longer has extra items.
+    for index in range(len(old), len(new)):
+        changes.append(_make_change(f"{path}[{index}]", ChangeKind.ITEM_ADDED, None, new[index]))
+    for index in range(len(new), len(old)):
+        changes.append(_make_change(f"{path}[{index}]", ChangeKind.ITEM_REMOVED, old[index], None))
 
 
 def _make_change(

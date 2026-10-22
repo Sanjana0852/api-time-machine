@@ -195,6 +195,97 @@ def test_hyphenated_key_inside_nested_object() -> None:
     ]
 
 
+# --- Arrays ----------------------------------------------------------------------
+
+
+def test_identical_arrays_have_no_changes() -> None:
+    assert compare({"tags": ["a", "b"]}, {"tags": ["a", "b"]}) == []
+
+
+def test_empty_arrays_have_no_changes() -> None:
+    assert compare({"tags": []}, {"tags": []}) == []
+
+
+def test_array_item_value_changed() -> None:
+    assert compare({"tags": ["a", "b"]}, {"tags": ["a", "c"]}) == [
+        Change("$.tags[1]", ChangeKind.VALUE_CHANGED, Severity.INFO, "b", "c"),
+    ]
+
+
+def test_array_item_added_at_end_is_info() -> None:
+    assert compare({"tags": ["a", "b"]}, {"tags": ["a", "b", "c"]}) == [
+        Change("$.tags[2]", ChangeKind.ITEM_ADDED, Severity.INFO, None, "c"),
+    ]
+
+
+def test_array_items_removed_from_end_are_info() -> None:
+    assert compare({"tags": ["a", "b", "c"]}, {"tags": ["a"]}) == [
+        Change("$.tags[1]", ChangeKind.ITEM_REMOVED, Severity.INFO, "b", None),
+        Change("$.tags[2]", ChangeKind.ITEM_REMOVED, Severity.INFO, "c", None),
+    ]
+
+
+def test_items_added_to_empty_array() -> None:
+    item = {"id": 1, "price": 250}
+
+    assert compare({"items": []}, {"items": [item]}) == [
+        Change("$.items[0]", ChangeKind.ITEM_ADDED, Severity.INFO, None, item),
+    ]
+
+
+def test_type_change_inside_array_of_objects_is_breaking() -> None:
+    # The realistic case: a list of products where one field changed type.
+    old = {"items": [{"id": 1, "price": 250}, {"id": 2, "price": 99}]}
+    new = {"items": [{"id": 1, "price": 250}, {"id": 2, "price": "99"}]}
+
+    assert compare(old, new) == [
+        Change("$.items[1].price", ChangeKind.TYPE_CHANGED, Severity.BREAKING, 99, "99"),
+    ]
+
+
+def test_removing_an_item_is_info_but_removing_a_field_inside_an_item_is_breaking() -> None:
+    old = {"items": [{"id": 1, "sku": "A"}, {"id": 2, "sku": "B"}]}
+    new = {"items": [{"id": 1}]}
+
+    assert compare(old, new) == [
+        Change("$.items[0].sku", ChangeKind.FIELD_REMOVED, Severity.BREAKING, "A", None),
+        Change("$.items[1]", ChangeKind.ITEM_REMOVED, Severity.INFO, {"id": 2, "sku": "B"}, None),
+    ]
+
+
+def test_nested_arrays() -> None:
+    assert compare({"grid": [[1, 2], [3, 4]]}, {"grid": [[1, 2], [3, "4"]]}) == [
+        Change("$.grid[1][1]", ChangeKind.TYPE_CHANGED, Severity.BREAKING, 4, "4"),
+    ]
+
+
+def test_top_level_array() -> None:
+    assert compare([1, 2], [1, 3]) == [
+        Change("$[1]", ChangeKind.VALUE_CHANGED, Severity.INFO, 2, 3),
+    ]
+
+
+def test_array_becoming_object_is_a_type_change() -> None:
+    assert compare({"tags": ["a"]}, {"tags": {"0": "a"}}) == [
+        Change("$.tags", ChangeKind.TYPE_CHANGED, Severity.BREAKING, ["a"], {"0": "a"}),
+    ]
+
+
+def test_known_limitation_insert_at_start_shifts_every_item() -> None:
+    # Arrays are compared by position (design doc, section 7). Inserting at the
+    # front makes every existing item look changed instead of reporting one
+    # added item. This test documents that on purpose; if matching is ever
+    # improved, update this test and the design doc together.
+    old = {"tags": ["b", "c"]}
+    new = {"tags": ["a", "b", "c"]}
+
+    assert [(c.path, c.kind) for c in compare(old, new)] == [
+        ("$.tags[0]", ChangeKind.VALUE_CHANGED),
+        ("$.tags[1]", ChangeKind.VALUE_CHANGED),
+        ("$.tags[2]", ChangeKind.ITEM_ADDED),
+    ]
+
+
 # --- Purity --------------------------------------------------------------------
 
 
