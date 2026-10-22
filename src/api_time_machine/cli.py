@@ -12,6 +12,7 @@ from pathlib import Path
 
 from api_time_machine import __version__
 from api_time_machine.diff import compare
+from api_time_machine.jsonparse import parse_json
 from api_time_machine.models import JsonValue, Severity
 from api_time_machine.report import format_report
 
@@ -52,10 +53,8 @@ def load_json_file(path: Path) -> JsonValue:
     except OSError as error:
         raise InputError(f"{path}: cannot read file ({error.strerror})") from None
 
-    # Passing bytes (not text) lets the json module detect UTF-8, UTF-8 with a
-    # BOM, and UTF-16 (what Windows PowerShell 5.1's `>` writes) by itself.
     try:
-        return json.loads(data, parse_constant=_reject_non_standard_constant)
+        return parse_json(data)
     # Order matters: both of these are subclasses of ValueError, so they must
     # be caught before the general ValueError below.
     except json.JSONDecodeError as error:
@@ -66,12 +65,6 @@ def load_json_file(path: Path) -> JsonValue:
         raise InputError(f"{path}: not valid UTF-8 or UTF-16 text") from None
     except ValueError as error:
         raise InputError(f"{path}: invalid JSON: {error}") from None
-
-
-def _reject_non_standard_constant(name: str) -> None:
-    # Called by json.loads for NaN, Infinity and -Infinity, which Python accepts
-    # by default but the JSON standard does not.
-    raise ValueError(f"{name} is not allowed in JSON")
 
 
 def _build_parser() -> argparse.ArgumentParser:

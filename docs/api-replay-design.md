@@ -48,7 +48,8 @@ The comparison engine from Phase 1 is reused unchanged. Phase 2 only adds new wa
 |---|---|
 | `mock_api.py` | A small demo API, run on port 8001. `/v1` and `/v2` serve the same products with deliberate changes between versions. |
 | `config.py` | Reads settings (the allowed hosts) from environment variables. |
-| `fetch.py` | `fetch_json(client, url)`: one safe HTTP GET. This is the security boundary: every rule in section 4 is enforced here. |
+| `fetch.py` | `fetch_json(client, url, allowed_hosts)`: one safe HTTP GET. This is the security boundary: every rule in section 4 is enforced here. |
+| `jsonparse.py` | `parse_json(bytes)`: strict JSON parsing (UTF-8/UTF-16 detection, NaN rejected), shared by `cli.py` for files and `fetch.py` for HTTP bodies, so both inputs are parsed identically. |
 | `replay.py` | `replay(old_url, new_url)`: fetches both URLs concurrently and compares them. |
 | `api.py` | The FastAPI web app, run on port 8000: `/health`, `/compare`, `/replay`. |
 | `cli.py` | Gains a `replay` subcommand next to `compare`. |
