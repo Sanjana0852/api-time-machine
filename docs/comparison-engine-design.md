@@ -1,6 +1,6 @@
 # Comparison Engine: Design
 
-**Status:** proposed (Phase 1)
+**Status:** implemented (Phase 1)
 
 The comparison engine takes two JSON documents, an **old** response and a **new** one, and returns the list of differences between them. Each difference is classified as **breaking**, **safe** or **info**.
 
@@ -176,13 +176,17 @@ python -m api_time_machine compare old.json new.json
 Prints one line per change, then a summary:
 
 ```
-BREAKING  $.price       type changed: integer → string  (250 → "250")
-BREAKING  $.seller.id   field removed
-SAFE      $.discount    field added (integer)
-INFO      $.stock       value changed: 12 → 9
+BREAKING  $.price      type changed: integer -> string  (250 -> "250")
+BREAKING  $.seller.id  field removed
+SAFE      $.discount   field added (integer)
+INFO      $.stock      value changed: 12 -> 9
 
 4 changes: 2 breaking, 1 safe, 1 info
 ```
+
+The output is ASCII-only (`->`, not an arrow character). On Windows, when output is redirected to a file or pipe, Python may use a legacy encoding that cannot represent non-ASCII symbols, and printing one would crash the tool.
+
+Values are printed in JSON form, so strings keep their quotes: `250 -> "250"` is visibly a type change, where `250 -> 250` would look like nothing changed.
 
 **Exit codes**, so scripts and CI pipelines can react without reading the text:
 
