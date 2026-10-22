@@ -104,7 +104,9 @@ $env:ATM_ALLOWED_HOSTS = "localhost,127.0.0.1,api.staging.example.com"
 ## 5. Replay
 
 ```python
-async def replay(old_url: str, new_url: str, client: httpx.AsyncClient) -> ReplayResult
+async def replay(
+    client: httpx.AsyncClient, old_url: str, new_url: str, allowed_hosts: frozenset[str]
+) -> ReplayResult
 ```
 
 1. Fetch both URLs **at the same time** with `asyncio.gather`, so waiting on two servers takes as long as the slower one, not the sum of both.
@@ -124,6 +126,9 @@ class ReplayResult:
     new: FetchedResponse
     status_severity: Severity | None   # None if the status codes are equal
     changes: list[Change]             # differences between the bodies
+
+    @property
+    def has_breaking(self) -> bool: ...  # status change or any body change is breaking
 ```
 
 The `client` is passed in rather than created inside `replay`. Tests can then pass a client with a fake transport. This is called **dependency injection**: a function receives the things it depends on instead of building them itself.
@@ -139,6 +144,8 @@ This lives in `rules.py` with the other severity rules.
 | R12 | Any other difference | **info** | e.g. `200 → 201`, or `500 → 200` (it got fixed). |
 
 A replay counts as breaking if the status change or any body change is breaking.
+
+**Limitation: error bodies are compared too.** If the old response succeeds and the new one fails (e.g. `200 → 404`), the success body is still compared with the error body, giving many "field removed" lines that add little beyond the status change itself. A possible improvement: skip the body comparison when one response is 2xx and the other isn't.
 
 **Limitation:** both responses must have JSON bodies. If one returns HTML (say, a proxy error page), replay reports a `FetchError` with that response's status code instead of a comparison. FastAPI's own errors, like 404, are JSON, so they compare normally.
 

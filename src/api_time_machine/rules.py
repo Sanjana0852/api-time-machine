@@ -1,6 +1,7 @@
 """Severity policy: how likely each kind of change is to break API clients.
 
-Rule numbers refer to section 5 of docs/comparison-engine-design.md.
+Rules R1-R9 are in section 5 of docs/comparison-engine-design.md; R10-R12
+(status codes) are in section 5 of docs/api-replay-design.md.
 Detection (diff.py) decides WHAT changed; this module decides HOW BAD it is.
 """
 
@@ -27,6 +28,19 @@ def classify(kind: ChangeKind, old_value: JsonValue, new_value: JsonValue) -> Se
             # is added without a rule, type checkers flag this line, and at
             # runtime it raises instead of silently returning None.
             assert_never(kind)
+
+
+def classify_status_change(old_status: int, new_status: int) -> Severity | None:
+    """Return the severity of an HTTP status code change, or None if it didn't change."""
+    if old_status == new_status:
+        return None  # R10
+    if _is_success(old_status) and not _is_success(new_status):
+        return Severity.BREAKING  # R11: the endpoint used to work and now doesn't
+    return Severity.INFO  # R12
+
+
+def _is_success(status: int) -> bool:
+    return 200 <= status < 300
 
 
 def _classify_type_change(old_type: JsonType, new_type: JsonType) -> Severity:

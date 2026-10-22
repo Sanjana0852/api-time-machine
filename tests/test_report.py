@@ -2,8 +2,10 @@
 
 import pytest
 
+from api_time_machine.fetch import FetchedResponse
 from api_time_machine.models import Change, ChangeKind, Severity
-from api_time_machine.report import describe, format_report
+from api_time_machine.replay import ReplayResult
+from api_time_machine.report import describe, format_replay_report, format_report
 
 PRICE_TYPE_CHANGE = Change("$.price", ChangeKind.TYPE_CHANGED, Severity.BREAKING, 250, "250")
 SELLER_ID_REMOVED = Change("$.seller.id", ChangeKind.FIELD_REMOVED, Severity.BREAKING, 7, None)
@@ -69,3 +71,42 @@ def test_full_report_is_aligned_and_ends_with_summary() -> None:
 
 def test_summary_uses_singular_for_one_change() -> None:
     assert format_report([STOCK_CHANGED]).endswith("1 change: 0 breaking, 0 safe, 1 info")
+
+
+# --- Replay report -----------------------------------------------------------------
+
+
+def make_replay_result(
+    old_status: int, new_status: int, status_severity: Severity | None, changes: list[Change]
+) -> ReplayResult:
+    return ReplayResult(
+        old=FetchedResponse("http://localhost/v1/p", old_status, {}),
+        new=FetchedResponse("http://localhost/v2/p", new_status, {}),
+        status_severity=status_severity,
+        changes=changes,
+    )
+
+
+def test_replay_report_shows_both_requests_then_the_changes() -> None:
+    result = make_replay_result(200, 200, None, [STOCK_CHANGED])
+
+    assert format_replay_report(result) == (
+        "Old: HTTP 200  http://localhost/v1/p\n"
+        "New: HTTP 200  http://localhost/v2/p\n"
+        "\n"
+        "INFO      $.stock  value changed: 12 -> 9\n"
+        "\n"
+        "1 change: 0 breaking, 0 safe, 1 info"
+    )
+
+
+def test_replay_report_shows_status_change_with_its_severity() -> None:
+    result = make_replay_result(200, 404, Severity.BREAKING, [])
+
+    assert format_replay_report(result) == (
+        "Old: HTTP 200  http://localhost/v1/p\n"
+        "New: HTTP 404  http://localhost/v2/p\n"
+        "BREAKING  status code changed: 200 -> 404\n"
+        "\n"
+        "No changes."
+    )

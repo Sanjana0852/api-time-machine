@@ -5,9 +5,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+import httpx
 import pytest
 
 from api_time_machine.cli import EXIT_BREAKING, EXIT_ERROR, EXIT_OK, main
+from api_time_machine.mock_api import app as mock_app
 
 
 def write_json(folder: Path, name: str, data: object) -> Path:
@@ -153,6 +155,77 @@ def test_example_files_cover_every_severity(capsys: pytest.CaptureFixture[str]) 
 
     assert main(["compare", str(old), str(new)]) == EXIT_BREAKING
     assert capsys.readouterr().out.endswith("9 changes: 4 breaking, 3 safe, 2 info\n")
+
+
+# --- replay command --------------------------------------------------------------------
+# The mock API is called in memory through ASGITransport: no server, no network.
+
+
+@pytest.fixture
+def default_allowed_hosts(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Ignore any ATM_ALLOWED_HOSTS set on the machine running the tests.
+    monkeypatch.delenv("ATM_ALLOWED_HOSTS", raising=False)
+
+
+@pytest.mark.usefixtures("default_allowed_hosts")
+def test_replay_with_breaking_changes(capsys: pytest.CaptureFixture[str]) -> None:
+    exit_code = main(
+        ["replay", "http://localhost/v1/products/101", "http://localhost/v2/products/101"],
+        transport=httpx.ASGITransport(app=mock_app),
+    )
+
+    assert exit_code == EXIT_BREAKING
+    out = capsys.readouterr().out
+    assert out.startswith("Old: HTTP 200  http://localhost/v1/products/101\n")
+    assert out.endswith("9 changes: 4 breaking, 3 safe, 2 info\n")
+
+
+@pytest.mark.usefixtures("default_allowed_hosts")
+def test_replay_same_url_exits_ok() -> None:
+    url = "http://localhost/v1/products/101"
+
+    assert main(["replay", url, url], transport=httpx.ASGITransport(app=mock_app)) == EXIT_OK
+
+
+@pytest.mark.usefixtures("default_allowed_hosts")
+def test_replay_blocked_host_exits_with_error(capsys: pytest.CaptureFixture[str]) -> None:
+    exit_code = main(
+        ["replay", "http://localhost/v1/products/101", "https://example.com/"],
+        transport=httpx.ASGITransport(app=mock_app),
+    )
+
+    assert exit_code == EXIT_ERROR
+    captured = capsys.readouterr()
+    assert "not in the allowed hosts" in captured.err
+    assert captured.out == ""
+
+
+@pytest.mark.usefixtures("default_allowed_hosts")
+def test_replay_server_not_running_exits_with_error(capsys: pytest.CaptureFixture[str]) -> None:
+    def refused(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection refused", request=request)
+
+    exit_code = main(
+        ["replay", "http://localhost:8001/a", "http://localhost:8001/b"],
+        transport=httpx.MockTransport(refused),
+    )
+
+    assert exit_code == EXIT_ERROR
+    assert "could not connect" in capsys.readouterr().err
+
+
+def test_allowed_hosts_come_from_environment(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("ATM_ALLOWED_HOSTS", "")  # allow nothing
+
+    exit_code = main(
+        ["replay", "http://localhost/v1/products/101", "http://localhost/v2/products/101"],
+        transport=httpx.ASGITransport(app=mock_app),
+    )
+
+    assert exit_code == EXIT_ERROR
+    assert "(none)" in capsys.readouterr().err
 
 
 # --- Running as `python -m api_time_machine` ---------------------------------------
